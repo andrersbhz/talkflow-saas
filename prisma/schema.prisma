@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole { OWNER ADMIN SUPERVISOR AGENT ANALYST }
+enum ChannelStatus { DISCONNECTED CONNECTING QR_PENDING AUTHENTICATING CONNECTED SYNCING ACTIVE ERROR SUSPENDED }
+enum ProviderType { META EVOLUTION ZAPI BAILEYS }
+enum ConversationStatus { INBOX WAITING OPEN CLOSED }
+enum MessageDirection { INBOUND OUTBOUND }
+enum MessageType { TEXT IMAGE AUDIO VIDEO DOCUMENT LOCATION CONTACT TEMPLATE SYSTEM }
+enum CampaignStatus { DRAFT SCHEDULED RUNNING PAUSED COMPLETED FAILED }
+enum FlowStatus { DRAFT PUBLISHED ARCHIVED }
+
+model Organization {
+  id            String          @id @default(cuid())
+  name          String
+  slug          String          @unique
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  users         Membership[]
+  channels      Channel[]
+  contacts      Contact[]
+  conversations Conversation[]
+  departments   Department[]
+  tags          Tag[]
+  flows         ChatbotFlow[]
+  aiAgents      AiAgent[]
+  campaigns     Campaign[]
+}
+
+model User {
+  id           String         @id @default(cuid())
+  name         String
+  email        String         @unique
+  passwordHash String
+  avatarUrl    String?
+  active       Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  memberships  Membership[]
+  assignments  Conversation[] @relation("AssignedAgent")
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           UserRole     @default(AGENT)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  @@unique([userId, organizationId])
+}
+
+model Channel {
+  id                 String        @id @default(cuid())
+  organizationId     String
+  name               String
+  phoneNumber        String?
+  provider           ProviderType
+  providerInstanceId String?
+  status             ChannelStatus @default(DISCONNECTED)
+  connectedAt        DateTime?
+  lastSyncAt         DateTime?
+  accessTokenEnc     String?
+  metadata           Json?
+  organization       Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversations      Conversation[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  @@index([organizationId, status])
+}
+
+model Contact {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String?
+  phone          String
+  email          String?
+  avatarUrl      String?
+  company        String?
+  source         String?
+  customFields   Json?
+  lastActivityAt DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversations  Conversation[]
+  tags           ContactTag[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  @@unique([organizationId, phone])
+}
+
+model Tag {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  color          String?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contacts       ContactTag[]
+  @@unique([organizationId, name])
+}
+
+model ContactTag {
+  contactId String
+  tagId     String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@id([contactId, tagId])
+}
+
+model Department {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  active         Boolean      @default(true)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversations  Conversation[]
+}
+
+model Conversation {
+  id              String             @id @default(cuid())
+  organizationId  String
+  channelId       String
+  contactId       String
+  assignedAgentId String?
+  departmentId    String?
+  status          ConversationStatus @default(INBOX)
+  priority        Int                @default(0)
+  unreadCount     Int                @default(0)
+  lastMessageAt   DateTime?
+  closedAt        DateTime?
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  channel         Channel      @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  contact         Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  assignedAgent   User?        @relation("AssignedAgent", fields: [assignedAgentId], references: [id])
+  department      Department?  @relation(fields: [departmentId], references: [id])
+  messages        Message[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  @@index([organizationId, status, lastMessageAt])
+}
+
+model Message {
+  id                String           @id @default(cuid())
+  conversationId    String
+  providerMessageId String?
+  direction         MessageDirection
+  type              MessageType      @default(TEXT)
+  text              String?
+  mediaUrl          String?
+  mimeType          String?
+  status            String?
+  metadata          Json?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt         DateTime     @default(now())
+  @@index([conversationId, createdAt])
+}
+
+model ChatbotFlow {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  version        Int          @default(1)
+  status         FlowStatus   @default(DRAFT)
+  definition     Json
+  publishedAt    DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model AiAgent {
+  id               String       @id @default(cuid())
+  organizationId   String
+  name             String
+  provider         String
+  model            String
+  systemPrompt     String
+  temperature      Float        @default(0.3)
+  knowledgeConfig  Json?
+  transferRules    Json?
+  active           Boolean      @default(true)
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model Campaign {
+  id             String         @id @default(cuid())
+  organizationId String
+  name           String
+  status         CampaignStatus @default(DRAFT)
+  audience       Json?
+  template       Json?
+  scheduledAt    DateTime?
+  stats          Json?
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
