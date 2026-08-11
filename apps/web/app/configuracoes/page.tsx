@@ -1,0 +1,3 @@
+import Shell from '@/components/Shell';
+const groups=[['Conta','Perfil · Preferências pessoais'],['Atendimento','Canais · Atendentes · Setores · Horários · Etiquetas · Grupos'],['Automação','Agentes de IA · Base de conhecimento · Chatbots · Respostas rápidas'],['Integrações','API · Webhooks · Meta · Gemini · OpenAI'],['Segurança','Usuários · Papéis · Sessões · Auditoria']];
+export default function Page(){return <Shell><div className="top"><div><h1>Configurações</h1><p className="muted">Administração da organização.</p></div></div><div className="grid cols2">{groups.map(g=><div className="card" key={g[0]}><h2>{g[0]}</h2><p className="muted">{g[1]}</p></div>)}</div></Shell>}
