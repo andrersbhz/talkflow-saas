@@ -1,0 +1,2 @@
+import Shell from '@/components/Shell';
+export default function Page(){return <Shell><div className="top"><div><h1>Campanhas</h1><p className="muted">Segmentação, templates, agendamento e métricas.</p></div><button className="btn">+ Nova campanha</button></div><div className="grid cols3"><div className="card">Enviadas<div className="metric">0</div></div><div className="card">Entregues<div className="metric">0</div></div><div className="card">Respostas<div className="metric">0</div></div></div></Shell>}
