@@ -1,0 +1,2 @@
+import Shell from '@/components/Shell';
+export default function Page(){return <Shell><div className="top"><div><h1>Chatbots</h1><p className="muted">Crie, versione e publique automações.</p></div><button className="btn">+ Novo chatbot</button></div><div className="card center"><div><h2>Crie seu primeiro chatbot</h2><p className="muted">Editor visual de fluxos com nós, condições, IA, webhooks e transferências.</p><a className="btn" href="/chatbots/fluxo">Abrir editor demo</a></div></div></Shell>}
